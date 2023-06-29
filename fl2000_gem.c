@@ -162,8 +162,10 @@ static int fl2000_gem_mmap_obj(struct fl2000_gem_object *obj, struct vm_area_str
 	 * vm_pgoff (used as a fake buffer offset by DRM) to 0 as we want to map
 	 * the whole buffer.
 	 */
-	vma->vm_flags &= ~VM_PFNMAP;
-	vma->vm_flags |= VM_MIXEDMAP;
+	vm_flags_clear(vma, VM_PFNMAP);
+	vm_flags_set(vma, VM_MIXEDMAP);
+	//vma->vm_flags &= ~VM_PFNMAP;
+	//vma->vm_flags |= VM_MIXEDMAP;
 	vma->vm_pgoff = 0;
 
 	ret = vm_map_pages(vma, obj->pages, obj->num_pages);
@@ -231,7 +233,8 @@ struct drm_gem_object *fl2000_gem_prime_import_sg_table(struct drm_device *drm,
 		goto error;
 	}
 
-	ret = drm_prime_sg_to_page_addr_arrays(sgt, obj->pages, NULL, obj->num_pages);
+	ret = drm_prime_sg_to_page_array(sgt, obj->pages, obj->num_pages);
+	// ret = drm_prime_sg_to_page_addr_arrays(sgt, obj->pages, NULL, obj->num_pages);
 	if (ret < 0) {
 		kvfree(obj->pages);
 		goto error;
@@ -251,24 +254,25 @@ error:
 	return ERR_PTR(ret);
 }
 
-void *fl2000_gem_prime_vmap(struct drm_gem_object *gem_obj)
+int fl2000_gem_prime_vmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
 {
 	struct fl2000_gem_object *obj = to_fl2000_gem_obj(gem_obj);
 
-	return obj->vaddr;
+	iosys_map_set_vaddr(map, obj->vaddr);
+	return 0;
 }
 
-void fl2000_gem_prime_vunmap(struct drm_gem_object *gem_obj, void *vaddr)
-{
-	/* Do nothing */
-}
+// void fl2000_gem_prime_vunmap(struct drm_gem_object *gem_obj, struct iosys_map *map)
+// {
+// 	/* Do nothing */
+// }
 
 static const struct drm_gem_object_funcs fl2000_gem_default_funcs = {
 	.free = fl2000_gem_free,
 	.print_info = fl2000_gem_print_info,
 	.get_sg_table = fl2000_gem_prime_get_sg_table,
 	.vmap = fl2000_gem_prime_vmap,
-	.vunmap = fl2000_gem_prime_vunmap,
+	//.vunmap = fl2000_gem_prime_vunmap,
 	.vm_ops = &fl2000_gem_vm_ops,
 };
 
